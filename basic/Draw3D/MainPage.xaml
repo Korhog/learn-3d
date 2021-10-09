@@ -9,6 +9,10 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">    
     <Grid>
-        <canvas:CanvasControl Draw="OnDraw" ClearColor="Black"/>
+        <canvas:CanvasAnimatedControl 
+            x:Name="Canvas3D" 
+            Draw="OnAnimatedDraw"
+            SizeChanged="OnSizeChanged"
+            ClearColor="Black"/>
     </Grid>
 </Page>

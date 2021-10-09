@@ -34,27 +34,5 @@ namespace Draw3D.Math3D
             );
         }
         #endregion
-
-        #region matrix funtions 
-        public static Vector4F Mul(Matrix4x4F m, Vector4F v)
-        {
-            return new Vector4F(
-                v.X * m[0].X + v.Y * m[1].X + v.Z * m[2].X + v.W * m[3].X,
-                v.X * m[0].Y + v.Y * m[1].Y + v.Z * m[2].Y + v.W * m[3].Y,
-                v.X * m[0].Z + v.Y * m[1].Z + v.Z * m[2].Z + v.W * m[3].Z,
-                v.X * m[0].W + v.Y * m[1].W + v.Z * m[2].W + v.W * m[3].W
-            );            
-        }
-
-        public static Matrix4x4F Mul(Matrix4x4F m1, Matrix4x4F m2)
-        {
-            return new Matrix4x4F(
-                Mul(m1, m2[0]),
-                Mul(m1, m2[1]),
-                Mul(m1, m2[2]),
-                Mul(m1, m2[3])
-            );
-        }
-        #endregion
     }
 }

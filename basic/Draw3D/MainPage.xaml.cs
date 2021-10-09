@@ -2,75 +2,91 @@
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Draw3D.Math3D;
 using Windows.UI;
-using Microsoft.Graphics.Canvas;
+using System;
 
 namespace Draw3D
 {
     public sealed partial class MainPage : Page
     {
+        private float angle = 0.0f;
+
         Vector4F[] box = new Vector4F[8]
         {
-            new Vector4F(-100,  100, -100, 1),
-            new Vector4F(-100,  100,  100, 1),
-            new Vector4F(-100, -100,  100, 1),
-            new Vector4F(-100, -100, -100, 1),
-            new Vector4F( 100,  100, -100, 1),
-            new Vector4F( 100,  100,  100, 1),
-            new Vector4F( 100, -100,  100, 1),
-            new Vector4F( 100, -100, -100, 1)
+            new Vector4F(-1,  1, -1, 1), // 0 A C E
+            new Vector4F(-1,  1,  1, 1), // 1 B C E
+            new Vector4F(-1, -1,  1, 1), // 2 B C F 
+            new Vector4F(-1, -1, -1, 1), // 3 A C F
+            new Vector4F( 1,  1, -1, 1), // 4 A D E
+            new Vector4F( 1,  1,  1, 1), // 5 B D E
+            new Vector4F( 1, -1,  1, 1), // 6 B D F
+            new Vector4F( 1, -1, -1, 1)  // 7 A D F
         };
 
-        Vector4F eye = new Vector4F(500, 300, -500, 0);
+        int[] ind = new int[] { 0, 3, 7, 4, 1, 2, 6, 5, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 5, 4, 2, 3, 7, 6 };
+
+        Vector4F eye = new Vector4F(0, 2, -5, 0);
         Matrix4x4F viewMatrix;
+        Matrix4x4F perspectiveMatrix;
+        Matrix4x4F worldToScreenMatrix;
+        Matrix4x4F mvp;
 
         public MainPage()
         {
             this.InitializeComponent();
-            viewMatrix = Matrix4x4F.LookAt(eye, new Vector4F(0, 0, 0, 0), new Vector4F(0, 1, 0, 0));           
-        }
+            viewMatrix = Matrix4x4F.LookAt(eye, new Vector4F(0, 0, 0, 0), new Vector4F(0, 1, 0, 0));
+            perspectiveMatrix = Matrix4x4F.Perspective(40, 1, 1, 10);
+            worldToScreenMatrix = Matrix4x4F.WorldToScreen(Canvas3D.Size);
 
-        // Basic draw cyc
-        private void OnDraw(CanvasControl sender, CanvasDrawEventArgs args) 
-        { 
-            DrawGrid(sender, args.DrawingSession);
+            mvp = Matrix4x4F.Multiply(Matrix4x4F.Multiply(viewMatrix, perspectiveMatrix), worldToScreenMatrix);
+        } 
 
-            var p0 = WorldToScreen(sender, new Vector2F());
+        private void OnAnimatedDraw(ICanvasAnimatedControl sender, CanvasAnimatedDrawEventArgs args)
+        {
+            var a = angle * MathF.PI / 180.0f;
+            var rotation = Matrix4x4F.Rotation(a, a, a);
 
-            foreach (var p in box)
+
+            Vector4F p2;
+
+            for (var side = 0; side < 6; side++)
             {
-                var pt = Func3D.Mul(viewMatrix, p);
-                pt = Project(pt);
-                var pw = WorldToScreen(sender, new Vector2F(pt.X, pt.Y));
-                args.DrawingSession.FillCircle(pw.X, pw.Y, 2, Colors.Yellow);                
+                var s = side * 4;
+                for (var i = 0; i < 4; i++)
+                {
+                    var p1 = box[ind[s + i]];
+                    p2 = i == 3 ? box[ind[s]] : box[ind[s + i + 1]];
+
+
+                    var pt1 = Vector4F.Transform(rotation, p1);
+                    pt1 = Vector4F.Transform(mvp, pt1);
+                    //pt1 = Vector4F.Transform(viewMatrix, pt1);
+                    //pt1 = Vector4F.Transform(perspectiveMatrix, pt1);
+                    //pt1 = Vector4F.Transform(worldToScreenMatrix, pt1);
+
+                    var pt2 = Vector4F.Transform(rotation, p2);
+                    pt2 = Vector4F.Transform(mvp, pt2);
+                    //pt2 = Vector4F.Transform(viewMatrix, pt2);
+                    //pt2 = Vector4F.Transform(perspectiveMatrix, pt2);
+                    //pt2 = Vector4F.Transform(worldToScreenMatrix, pt2);
+
+                    args.DrawingSession.DrawLine(pt1.X, pt1.Y, pt2.X, pt2.Y, Colors.CornflowerBlue, 2.0f);
+                }
             }
 
-            args.DrawingSession.FillCircle(p0.X, p0.Y, 2, Colors.Red);
+            angle += 1.0f;
+            if (angle > 360.0f)
+            {
+                angle -= 360.0f;
+            }            
         }
 
-        Vector4F Project(Vector4F v)
+        private void OnSizeChanged(object sender, Windows.UI.Xaml.SizeChangedEventArgs e)
         {
-            var n = 500;
-            var x = n * v.X / v.Z;
-            var y = n * v.Y / v.Z;
-            return new Vector4F(x, y, v.Z, v.W);
-        }
+            viewMatrix = Matrix4x4F.LookAt(eye, new Vector4F(0, 0, 0, 0), new Vector4F(0, 1, 0, 0));
+            perspectiveMatrix = Matrix4x4F.Perspective(40, 1, 1, 10);
+            worldToScreenMatrix = Matrix4x4F.WorldToScreen(Canvas3D.Size);
 
-        private Vector2F WorldToScreen(CanvasControl canvas, Vector2F p)
-        {
-            var center = Center(canvas);
-            return new Vector2F(center.X + p.X, center.Y - p.Y);
-        }
-
-        private Vector2F Center(CanvasControl canvas) => new Vector2F(
-                (float)(canvas.ActualWidth / 2),
-                (float)(canvas.ActualHeight / 2)
-            );
-
-        private void DrawGrid(CanvasControl canvas, CanvasDrawingSession session) 
-        {
-            var center = Center(canvas);
-            session.DrawLine(center.X, 0, center.X, (float)canvas.ActualHeight, Color.FromArgb(50, 0, 255, 0));
-            session.DrawLine(0, center.Y, (float)canvas.ActualWidth, center.Y, Color.FromArgb(50, 0, 255, 0));
+            mvp = Matrix4x4F.Multiply(Matrix4x4F.Multiply(viewMatrix, perspectiveMatrix), worldToScreenMatrix);
         }
     }
 }
