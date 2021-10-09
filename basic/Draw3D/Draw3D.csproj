@@ -126,6 +126,7 @@
     <Compile Include="Math3D\Matrix4x4F.cs" />
     <Compile Include="Math3D\Vector2F.cs" />
     <Compile Include="Math3D\Vector4F.cs" />
+    <Compile Include="Math3D\Vertex.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

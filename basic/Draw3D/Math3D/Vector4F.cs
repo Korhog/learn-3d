@@ -1,4 +1,6 @@
-﻿namespace Draw3D.Math3D
+﻿using System;
+
+namespace Draw3D.Math3D
 {
     internal class Vector4F
     {
@@ -71,6 +73,16 @@
                 a.W / s
             );
         }
+
+        public static float Angle(Vector4F a, Vector4F b)
+        {
+            var dot = a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+            var cos = dot / (Func3D.Magnitude(a) * Func3D.Magnitude(b));
+
+            var angle = MathF.Acos(cos);
+            return angle;
+        }
+
 
         public static Vector4F Transform(Matrix4x4F m, Vector4F v)
         {
