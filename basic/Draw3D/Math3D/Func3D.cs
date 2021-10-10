@@ -20,7 +20,12 @@ namespace Draw3D.Math3D
                 return vector;
             }
 
-            return vector / m;
+            return new Vector4F(
+                vector.X / m,
+                vector.Y / m,
+                vector.Z / m,
+                1
+            );
         }
 
         /// <summary> The cross product of vectors a and b.</summary>

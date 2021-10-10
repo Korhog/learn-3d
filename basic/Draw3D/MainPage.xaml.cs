@@ -10,6 +10,7 @@ namespace Draw3D
     public sealed partial class MainPage : Page
     {
         private float angle = 0.0f;
+        private float y = 0;
 
         Vector4F[] box = new Vector4F[8]
         {
@@ -62,6 +63,7 @@ namespace Draw3D
             worldToScreenMatrix = Matrix4x4F.WorldToScreen(Canvas3D.Size);
 
             mvp = Matrix4x4F.Multiply(Matrix4x4F.Multiply(viewMatrix, perspectiveMatrix), worldToScreenMatrix);
+            y = (float)Canvas3D.Size.Height / 2.0f;
         } 
 
         private void OnAnimatedDraw(ICanvasAnimatedControl sender, CanvasAnimatedDrawEventArgs args)
@@ -102,7 +104,7 @@ namespace Draw3D
 
             DrawIndicies(vertices, indicies, args.DrawingSession);
 
-            angle += 1.0f;
+            angle += 1f;
             if (angle > 360.0f)
             {
                 angle -= 360.0f;
@@ -128,6 +130,13 @@ namespace Draw3D
 
         private void DrawTriangle(Vertex a, Vertex b, Vertex c, CanvasDrawingSession session)
         {
+            // get normal
+            var faceNormal = Func3D.Normalyze(
+                Func3D.Cross(
+                    b.Position - a.Position,
+                    c.Position - a.Position
+                ));
+
             // backface culling
             var m = Matrix4x4F.Multiply(Matrix4x4F.Multiply(rotation, viewMatrix), perspectiveMatrix);
 
@@ -138,19 +147,24 @@ namespace Draw3D
             var pbn = Func3D.Normalyze(pb - pa);
             var pcn = Func3D.Normalyze(pc - pa);
 
-            var faceNormal = Func3D.Cross(pbn, pcn);
+            var screenNormal = Func3D.Cross(pbn, pcn);
 
-            if (faceNormal.Z < 0)
+            if (screenNormal.Z < 0)
             {
                 pa = Vector4F.Transform(worldToScreenMatrix, pa);
                 pb = Vector4F.Transform(worldToScreenMatrix, pb);
                 pc = Vector4F.Transform(worldToScreenMatrix, pc);
 
-
                 // rasterize 
-                var (minY, maxY) = Area(pa, pb, pc); 
+                var (minY, maxY) = Area(pa, pb, pc);
 
-                for(int i = (int)minY; i < (int)maxY; i = i + 3)
+                var light = Vector4F.Angle(
+                    Vector4F.Transform(rotation, faceNormal),
+                    new Vector4F(0, 0, -1));
+
+                var color = Light(Colors.YellowGreen, light);
+
+                for(int i = (int)minY; i < (int)maxY; i++)
                 {
                     float?[] points = new float?[3]
                     {
@@ -164,7 +178,7 @@ namespace Draw3D
 
                     foreach (var p in points)
                     {
-                        if(p.HasValue)
+                        if (p.HasValue)
                         {
                             // session.FillCircle(p.Value, i, 3, Colors.Red);
 
@@ -173,37 +187,49 @@ namespace Draw3D
                         }
                     }
 
-                    //if (min.HasValue && max.HasValue)
-                    //{
-                    //    session.DrawLine(
-                    //        min.Value,
-                    //        i,
-                    //        max.Value,
-                    //        i,
-                    //        Colors.DarkRed, 1.0f);
-                    //}
+                    if (min.HasValue && max.HasValue)
+                    {
+                        session.DrawLine(
+                            min.Value,
+                            i,
+                            max.Value,
+                            i,
+                            color,
+                            1.0f);
+                    }
                 }
 
-                DrawLine(a, b, session);
-                DrawLine(b, c, session);
-                DrawLine(c, a, session);
+                //draw edges
+                DrawLine(a, b, session, color);
+                DrawLine(b, c, session, color);
+                DrawLine(c, a, session, color);
+
+                //// draw normals
+                //DrawLine(a.Position, a.Position + faceNormal, session, Colors.YellowGreen);
+                //DrawLine(b.Position, b.Position + faceNormal, session, Colors.YellowGreen);
+                //DrawLine(c.Position, c.Position + faceNormal, session, Colors.YellowGreen);
             }
         }
 
-        private void DrawLine(Vertex a, Vertex b, CanvasDrawingSession session)
+        private void DrawLine(Vertex a, Vertex b, CanvasDrawingSession session, Color? color = null)
         {
-            var pt1 = Vector4F.Transform(rotation, a.Position);
+            DrawLine(a.Position, b.Position, session, color ?? Colors.CornflowerBlue);
+        }
+
+        private void DrawLine(Vector4F a, Vector4F b, CanvasDrawingSession session, Color color)
+        {
+            var pt1 = Vector4F.Transform(rotation, a);
             pt1 = Vector4F.Transform(mvp, pt1);
 
-            var pt2 = Vector4F.Transform(rotation, b.Position);
+            var pt2 = Vector4F.Transform(rotation, b);
             pt2 = Vector4F.Transform(mvp, pt2);
 
             session.DrawLine(
                 pt1.X,
                 pt1.Y,
                 pt2.X,
-                pt2.Y, 
-                Colors.CornflowerBlue, 2.0f);
+                pt2.Y,
+                color, 1.0f);
         }
 
         private float? XOL(Vector4F a, Vector4F b, float y)
@@ -222,13 +248,23 @@ namespace Draw3D
             var k = dy / len;
             var dx = MathF.Abs(a.X - b.X) * k;
 
-            if(a.X > b.Y)
+            if(a.X > b.X)
             {
                 return a.X - dx;
             }
 
             return a.X + dx;
         }
+
+        private Color Light(Color color, float a)
+        {
+            var k = 1.0f - (a < 0 ? 0 : (a > 2 ? 2 : a)) * 0.5f;
+            return Color.FromArgb(
+                color.A,
+                (byte)((float)color.R * k),
+                (byte)((float)color.G * k),
+                (byte)((float)color.B * k));
+        } 
 
         private (float, float) Area(Vector4F a, Vector4F b, Vector4F c)
         {
@@ -245,6 +281,7 @@ namespace Draw3D
             worldToScreenMatrix = Matrix4x4F.WorldToScreen(Canvas3D.Size);
 
             mvp = Matrix4x4F.Multiply(Matrix4x4F.Multiply(viewMatrix, perspectiveMatrix), worldToScreenMatrix);
+            y = (float)Canvas3D.Size.Height / 2.0f;
         }
     }
 }

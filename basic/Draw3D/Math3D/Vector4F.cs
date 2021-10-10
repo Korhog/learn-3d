@@ -41,7 +41,7 @@ namespace Draw3D.Math3D
                 a.X + b.X,
                 a.Y + b.Y,
                 a.Z + b.Z,
-                a.W + b.W
+                1
             );
         }
 
@@ -51,7 +51,7 @@ namespace Draw3D.Math3D
                 a.X - b.X,
                 a.Y - b.Y,
                 a.Z - b.Z,
-                a.W - b.W
+                1
             );
         }
 
@@ -61,7 +61,7 @@ namespace Draw3D.Math3D
                 a.X * s,
                 a.Y * s,
                 a.Z * s,
-                a.W * s
+                1
             );
         }
         public static Vector4F operator /(Vector4F a, float s)
@@ -70,7 +70,7 @@ namespace Draw3D.Math3D
                 a.X / s,
                 a.Y / s,
                 a.Z / s,
-                a.W / s
+                1
             );
         }
 
