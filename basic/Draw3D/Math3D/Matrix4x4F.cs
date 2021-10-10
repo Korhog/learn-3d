@@ -32,6 +32,26 @@ namespace Draw3D.Math3D
             A41 = A42 = A43 = A44 = 0.0f;
         }
 
+        public Matrix4x4F(System.Numerics.Matrix4x4 m)
+        {
+            A11 = m.M11; 
+            A12 = m.M12;
+            A13 = m.M13;
+            A14 = m.M14;
+            A21 = m.M21;
+            A22 = m.M22;
+            A23 = m.M23;
+            A24 = m.M24;
+            A31 = m.M31;
+            A32 = m.M32;
+            A33 = m.M33;
+            A34 = m.M34;
+            A41 = m.M41;
+            A42 = m.M42;
+            A43 = m.M43;
+            A44 = m.M44;  
+        }
+
         public static Matrix4x4F Identity()
         {
             var matrix = new Matrix4x4F();
@@ -43,10 +63,13 @@ namespace Draw3D.Math3D
         }
 
 
-        public static Matrix4x4F Perspective(float fov, float aspect, float near, float far)
+        public static Matrix4x4F Perspective(float fov, float near, float far)
         {
             var angle = fov * MathF.PI / 180.0f;
             var n = 1.0f / MathF.Tan(angle);
+
+            var a = (far + near) / (far - near);
+            var b = -2 * far * near / (far - near); 
 
             var result = Identity();
 
@@ -54,6 +77,11 @@ namespace Draw3D.Math3D
             result.A22 = n;
             result.A34 = 1.0f;
             result.A44 = 0.0f;
+
+            // fix Z
+
+            result.A33 = a;
+            result.A43 = b;
 
             return result;          
         }
@@ -191,7 +219,34 @@ namespace Draw3D.Math3D
             result.A44 = a.A41 * b.A14 + a.A42 * b.A24 + a.A43 * b.A34 + a.A44 * b.A44;
 
             return result;
-
         }
+
+        public static Matrix4x4F Transpose(Matrix4x4F a)
+        {
+            var result = new Matrix4x4F();
+
+            result.A11 = a.A11;
+            result.A21 = a.A12;
+            result.A31 = a.A13;
+            result.A41 = a.A14;
+
+            result.A12 = a.A21;
+            result.A22 = a.A22;
+            result.A32 = a.A23;
+            result.A42 = a.A24;
+
+            result.A13 = a.A31;
+            result.A23 = a.A32;
+            result.A33 = a.A33;
+            result.A43 = a.A34;
+
+            result.A14 = a.A41;
+            result.A24 = a.A42;
+            result.A34 = a.A43;
+            result.A44 = a.A44;
+
+            return result;
+        }
+
     }
 }

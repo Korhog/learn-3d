@@ -10,7 +10,6 @@ namespace Draw3D
     public sealed partial class MainPage : Page
     {
         private float angle = 0.0f;
-        private float y = 0;
 
         Vector4F[] box = new Vector4F[8]
         {
@@ -59,11 +58,10 @@ namespace Draw3D
         {
             this.InitializeComponent();
             viewMatrix = Matrix4x4F.LookAt(eye, new Vector4F(0, 0, 0, 0), new Vector4F(0, 1, 0, 0));
-            perspectiveMatrix = Matrix4x4F.Perspective(40, 1, 1, 10);
+            perspectiveMatrix = Matrix4x4F.Perspective(40, 1, 10);
             worldToScreenMatrix = Matrix4x4F.WorldToScreen(Canvas3D.Size);
 
             mvp = Matrix4x4F.Multiply(Matrix4x4F.Multiply(viewMatrix, perspectiveMatrix), worldToScreenMatrix);
-            y = (float)Canvas3D.Size.Height / 2.0f;
         } 
 
         private void OnAnimatedDraw(ICanvasAnimatedControl sender, CanvasAnimatedDrawEventArgs args)
@@ -277,11 +275,24 @@ namespace Draw3D
         private void OnSizeChanged(object sender, Windows.UI.Xaml.SizeChangedEventArgs e)
         {
             viewMatrix = Matrix4x4F.LookAt(eye, new Vector4F(0, 0, 0, 0), new Vector4F(0, 1, 0, 0));
-            perspectiveMatrix = Matrix4x4F.Perspective(40, 1, 1, 10);
+            perspectiveMatrix = Matrix4x4F.Perspective(40, 1, 10);
             worldToScreenMatrix = Matrix4x4F.WorldToScreen(Canvas3D.Size);
 
             mvp = Matrix4x4F.Multiply(Matrix4x4F.Multiply(viewMatrix, perspectiveMatrix), worldToScreenMatrix);
-            y = (float)Canvas3D.Size.Height / 2.0f;
         }
+
+        private Matrix4x4F Invert(Matrix4x4F m)
+        {
+            var nm = new System.Numerics.Matrix4x4(
+                m.A11, m.A12, m.A13, m.A14,
+                m.A21, m.A22, m.A23, m.A24,
+                m.A31, m.A32, m.A33, m.A34,
+                m.A41, m.A42, m.A43, m.A44
+            );
+
+            System.Numerics.Matrix4x4.Invert(nm, out var inv);
+
+            return new Matrix4x4F(inv);
+        } 
     }
 }
