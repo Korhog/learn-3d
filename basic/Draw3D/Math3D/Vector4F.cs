@@ -86,6 +86,11 @@ namespace Draw3D.Math3D
 
         public static Vector4F Transform(Matrix4x4F m, Vector4F v)
         {
+            if(m == null)
+            {
+                return v;
+            }
+
             var x = v.X * m.A11 + v.Y * m.A21 + v.Z * m.A31 + v.W * m.A41;
             var y = v.X * m.A12 + v.Y * m.A22 + v.Z * m.A32 + v.W * m.A42;
             var z = v.X * m.A13 + v.Y * m.A23 + v.Z * m.A33 + v.W * m.A43;

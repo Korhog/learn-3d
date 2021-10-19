@@ -13,6 +13,7 @@
             x:Name="Canvas3D" 
             Draw="OnAnimatedDraw"
             SizeChanged="OnSizeChanged"
+            IsFixedTimeStep="False"
             ClearColor="Black"/>
     </Grid>
 </Page>

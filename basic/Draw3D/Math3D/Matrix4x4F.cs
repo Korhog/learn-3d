@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Windows.Foundation;
 
 namespace Draw3D.Math3D
@@ -52,6 +54,34 @@ namespace Draw3D.Math3D
             A44 = m.M44;  
         }
 
+        public static Matrix4x4F operator /(Matrix4x4F m, float s)
+        {
+            var result = new Matrix4x4F();
+
+            result.A11 = m.A11 / s;
+            result.A12 = m.A12 / s;
+            result.A13 = m.A13 / s;
+            result.A14 = m.A14 / s;
+
+            result.A21 = m.A21 / s;
+            result.A22 = m.A22 / s;
+            result.A23 = m.A23 / s;
+            result.A24 = m.A24 / s;
+
+            result.A31 = m.A31 / s;
+            result.A32 = m.A32 / s;
+            result.A33 = m.A33 / s;
+            result.A34 = m.A34 / s;
+
+            result.A41 = m.A41 / s;
+            result.A42 = m.A42 / s;
+            result.A43 = m.A43 / s;
+            result.A44 = m.A44 / s;
+
+            return result;
+
+        }
+
         public static Matrix4x4F Identity()
         {
             var matrix = new Matrix4x4F();
@@ -62,6 +92,59 @@ namespace Draw3D.Math3D
             return matrix;
         }
 
+        public static Matrix4x4F MinorTest()
+        {
+            var m = new Matrix4x4F();
+
+            m.A11 = 11;
+            m.A12 = 12;
+            m.A13 = 13;
+            m.A14 = 14;
+
+            m.A21 = 21;
+            m.A22 = 22;
+            m.A23 = 23;
+            m.A24 = 24;
+
+            m.A31 = 31;
+            m.A32 = 32;
+            m.A33 = 33;
+            m.A34 = 34;
+
+            m.A41 = 41;
+            m.A42 = 42;
+            m.A43 = 43;
+            m.A44 = 44;
+
+            return m;
+        }
+
+        public static Matrix4x4F DeterminantTest()
+        {
+            var m = new Matrix4x4F();
+
+            m.A11 =  2;
+            m.A12 =  4;
+            m.A13 =  0;
+            m.A14 = -2;
+
+            m.A21 =  3;
+            m.A22 = -1;
+            m.A23 =  4;
+            m.A24 =  1;
+
+            m.A31 =  1;
+            m.A32 =  2;
+            m.A33 =  0;
+            m.A34 =  0;
+
+            m.A41 =  0;
+            m.A42 =  5;
+            m.A43 =  1;
+            m.A44 =  2;
+
+            return m;
+        }
 
         public static Matrix4x4F Perspective(float fov, float near, float far)
         {
@@ -221,32 +304,125 @@ namespace Draw3D.Math3D
             return result;
         }
 
-        public static Matrix4x4F Transpose(Matrix4x4F a)
+        public static Matrix4x4F Transpose(Matrix4x4F m)
         {
             var result = new Matrix4x4F();
 
-            result.A11 = a.A11;
-            result.A21 = a.A12;
-            result.A31 = a.A13;
-            result.A41 = a.A14;
+            result.A11 = m.A11;
+            result.A21 = m.A12;
+            result.A31 = m.A13;
+            result.A41 = m.A14;
 
-            result.A12 = a.A21;
-            result.A22 = a.A22;
-            result.A32 = a.A23;
-            result.A42 = a.A24;
+            result.A12 = m.A21;
+            result.A22 = m.A22;
+            result.A32 = m.A23;
+            result.A42 = m.A24;
 
-            result.A13 = a.A31;
-            result.A23 = a.A32;
-            result.A33 = a.A33;
-            result.A43 = a.A34;
+            result.A13 = m.A31;
+            result.A23 = m.A32;
+            result.A33 = m.A33;
+            result.A43 = m.A34;
 
-            result.A14 = a.A41;
-            result.A24 = a.A42;
-            result.A34 = a.A43;
-            result.A44 = a.A44;
+            result.A14 = m.A41;   
+            result.A24 = m.A42;
+            result.A34 = m.A43;
+            result.A44 = m.A44;
 
             return result;
         }
 
+        public static float Determinant(Matrix4x4F m)
+        {
+            var d = 0f;
+
+            var minor = Minor(m, 0, 0);
+            var det = Matrix3x3F.Determinant(minor);
+            var a = m.A11 * det;
+            d += a;
+
+            minor = Minor(m, 0, 1);
+            det = Matrix3x3F.Determinant(minor);
+            a = -m.A12 * det;
+            d += a;
+
+            minor = Minor(m, 0, 2);
+            det = Matrix3x3F.Determinant(minor);
+            a = m.A13 * det;
+            d += a;
+
+            minor = Minor(m, 0, 3);
+            det = Matrix3x3F.Determinant(minor);
+            a = -m.A14 * det;
+            d += a;
+
+            return d;
+        }
+
+        public static Matrix3x3F Minor(Matrix4x4F m, int i, int j)
+        {
+            var rows = new int[] { 0, 1, 2, 3 }.Where(x => x != i).ToArray();
+            var cols = new int[] { 0, 1, 2, 3 }.Where(x => x != j).ToArray();
+
+            var mx = new float[4, 4]
+            {
+               { m.A11, m.A12, m.A13, m.A14 },
+               { m.A21, m.A22, m.A23, m.A24 },
+               { m.A31, m.A32, m.A33, m.A34 },
+               { m.A41, m.A42, m.A43, m.A44 },
+            };
+
+            var a11 = mx[rows[0], cols[0]];
+            var a12 = mx[rows[0], cols[1]];
+            var a13 = mx[rows[0], cols[2]];
+
+            var a21 = mx[rows[1], cols[0]];
+            var a22 = mx[rows[1], cols[1]];
+            var a23 = mx[rows[1], cols[2]];
+
+            var a31 = mx[rows[2], cols[0]];
+            var a32 = mx[rows[2], cols[1]];
+            var a33 = mx[rows[2], cols[2]];
+
+            return new Matrix3x3F(a11, a12, a13, a21, a22, a23, a31, a32, a33);
+        }
+
+        public static bool Invert(Matrix4x4F m, out Matrix4x4F inverted)
+        {
+            // result = A* / det
+            // A* = T(C)
+
+            inverted = null;
+            var det = Determinant(m);
+            if(det == 0)
+            {
+                return false;
+            }
+
+            var c = new Matrix4x4F();
+
+            c.A11 =  Matrix3x3F.Determinant(Minor(m, 0, 0));
+            c.A12 = -Matrix3x3F.Determinant(Minor(m, 0, 1));
+            c.A13 =  Matrix3x3F.Determinant(Minor(m, 0, 2));
+            c.A14 = -Matrix3x3F.Determinant(Minor(m, 0, 3));
+
+            c.A21 = -Matrix3x3F.Determinant(Minor(m, 1, 0));
+            c.A22 =  Matrix3x3F.Determinant(Minor(m, 1, 1));
+            c.A23 = -Matrix3x3F.Determinant(Minor(m, 1, 2));
+            c.A24 =  Matrix3x3F.Determinant(Minor(m, 1, 3));
+
+            c.A31 =  Matrix3x3F.Determinant(Minor(m, 2, 0));
+            c.A32 = -Matrix3x3F.Determinant(Minor(m, 2, 1));
+            c.A33 =  Matrix3x3F.Determinant(Minor(m, 2, 2));
+            c.A34 = -Matrix3x3F.Determinant(Minor(m, 2, 3));
+
+            c.A41 = -Matrix3x3F.Determinant(Minor(m, 3, 0));
+            c.A42 =  Matrix3x3F.Determinant(Minor(m, 3, 1));
+            c.A43 = -Matrix3x3F.Determinant(Minor(m, 3, 2));
+            c.A44 =  Matrix3x3F.Determinant(Minor(m, 3, 3));
+
+            inverted = Transpose(c) / det;
+
+            return true;
+        } 
     }
 }

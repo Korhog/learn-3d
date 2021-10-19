@@ -4,12 +4,16 @@ using Draw3D.Math3D;
 using Windows.UI;
 using System;
 using Microsoft.Graphics.Canvas;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Draw3D
 {
     public sealed partial class MainPage : Page
     {
         private float angle = 0.0f;
+        private int pixelSize = 1;
+        private float pixelOffset = 0.5f;
 
         Vector4F[] box = new Vector4F[8]
         {
@@ -47,11 +51,14 @@ namespace Draw3D
             7, 6, 3, 3, 6, 2
         };
 
-        Vector4F eye = new Vector4F(0, 2, -5, 0);
+        Vector4F eye = new Vector4F(0, 2, -3, 0);
+        Vector4F lightPos = new Vector4F(-2, 3, -5, 0);   
+
         Matrix4x4F viewMatrix;
         Matrix4x4F perspectiveMatrix;
         Matrix4x4F worldToScreenMatrix;
         Matrix4x4F mvp;
+        Matrix4x4F mvpInverted;
         Matrix4x4F rotation;
 
         public MainPage()
@@ -60,8 +67,8 @@ namespace Draw3D
             viewMatrix = Matrix4x4F.LookAt(eye, new Vector4F(0, 0, 0, 0), new Vector4F(0, 1, 0, 0));
             perspectiveMatrix = Matrix4x4F.Perspective(40, 1, 10);
             worldToScreenMatrix = Matrix4x4F.WorldToScreen(Canvas3D.Size);
-
             mvp = Matrix4x4F.Multiply(Matrix4x4F.Multiply(viewMatrix, perspectiveMatrix), worldToScreenMatrix);
+            Matrix4x4F.Invert(mvp, out mvpInverted);
         } 
 
         private void OnAnimatedDraw(ICanvasAnimatedControl sender, CanvasAnimatedDrawEventArgs args)
@@ -70,39 +77,12 @@ namespace Draw3D
             rotation = Matrix4x4F.Rotation(a, a, a);
             //rotation = Matrix4x4F.RotationY(a);
 
-            /*
-
-            Vector4F p2;
-
-            for (var side = 0; side < 6; side++)
+            using (var session = args.DrawingSession)
             {
-                var s = side * 4;
-                for (var i = 0; i < 4; i++)
-                {
-                    var p1 = box[ind[s + i]];
-                    p2 = i == 3 ? box[ind[s]] : box[ind[s + i + 1]];
-
-
-                    var pt1 = Vector4F.Transform(rotation, p1);
-                    pt1 = Vector4F.Transform(mvp, pt1);
-                    //pt1 = Vector4F.Transform(viewMatrix, pt1);
-                    //pt1 = Vector4F.Transform(perspectiveMatrix, pt1);
-                    //pt1 = Vector4F.Transform(worldToScreenMatrix, pt1);
-
-                    var pt2 = Vector4F.Transform(rotation, p2);
-                    pt2 = Vector4F.Transform(mvp, pt2);
-                    //pt2 = Vector4F.Transform(viewMatrix, pt2);
-                    //pt2 = Vector4F.Transform(perspectiveMatrix, pt2);
-                    //pt2 = Vector4F.Transform(worldToScreenMatrix, pt2);
-
-                    args.DrawingSession.DrawLine(pt1.X, pt1.Y, pt2.X, pt2.Y, Colors.CornflowerBlue, 2.0f);
-                }
+                DrawIndicies(vertices, indicies, session);
             }
-            */
 
-            DrawIndicies(vertices, indicies, args.DrawingSession);
-
-            angle += 1f;
+            angle += 0.2f;
             if (angle > 360.0f)
             {
                 angle -= 360.0f;
@@ -135,6 +115,8 @@ namespace Draw3D
                     c.Position - a.Position
                 ));
 
+            faceNormal = Vector4F.Transform(rotation, faceNormal);
+
             // backface culling
             var m = Matrix4x4F.Multiply(Matrix4x4F.Multiply(rotation, viewMatrix), perspectiveMatrix);
 
@@ -145,67 +127,58 @@ namespace Draw3D
             var pbn = Func3D.Normalyze(pb - pa);
             var pcn = Func3D.Normalyze(pc - pa);
 
-            var screenNormal = Func3D.Cross(pbn, pcn);
-
+            var screenNormal = Func3D.Cross(pbn, pcn);           
             if (screenNormal.Z < 0)
             {
+                var vertices = new List<Vector4F>();
+
                 pa = Vector4F.Transform(worldToScreenMatrix, pa);
                 pb = Vector4F.Transform(worldToScreenMatrix, pb);
                 pc = Vector4F.Transform(worldToScreenMatrix, pc);
 
-                // rasterize 
+                //var light = Vector4F.Angle(
+                //     Vector4F.Transform(rotation, faceNormal),
+                //     new Vector4F(0, 0, -1));
+
+                //var color = Light(Colors.YellowGreen, light);
+
+                // rasterize
                 var (minY, maxY) = Area(pa, pb, pc);
-
-                var light = Vector4F.Angle(
-                    Vector4F.Transform(rotation, faceNormal),
-                    new Vector4F(0, 0, -1));
-
-                var color = Light(Colors.YellowGreen, light);
-
-                for(int i = (int)minY; i < (int)maxY; i++)
+                var size = (int)maxY - minY;                
+                
+                var step = (int)minY;
+                while(step < maxY)
                 {
-                    float?[] points = new float?[3]
-                    {
-                        XOL(pa, pb, i),
-                        XOL(pb, pc, i),
-                        XOL(pc, pa, i)
-                    };
+                    vertices.Clear();
+                    AddVertexByY(pa, pb, step, vertices);
+                    AddVertexByY(pb, pc, step, vertices);
+                    AddVertexByY(pc, pa, step, vertices);
 
-                    float? min = null;
-                    float? max = null;
-
-                    foreach (var p in points)
+                    vertices = vertices.OrderBy(x => x.X).ToList();
+                    if (vertices.Count > 1)
                     {
-                        if (p.HasValue)
+                        var vertexA = vertices.First();
+                        var vertexB = vertices.Last();
+
+                        for (int i = (int)MathF.Floor(vertexA.X); i < (int)MathF.Floor(vertexB.X) + pixelSize; i += pixelSize)
                         {
-                            // session.FillCircle(p.Value, i, 3, Colors.Red);
 
-                            min = min.HasValue ? (min.Value > p.Value ? p : min) : p;
-                            max = max.HasValue ? (max.Value < p.Value ? p : max) : p;
-                        }
+                            var point = GetInterpolatedByXY(vertexA, vertexB, i + pixelOffset, step + pixelOffset);
+                            if(point != null)
+                            {
+                                var worldPoint = Vector4F.Transform(mvpInverted, point);
+                                var light = Vector4F.Angle(
+                                     faceNormal,
+                                     Func3D.Normalyze(lightPos - worldPoint));
+
+                                var color = Light(Colors.HotPink, light);
+                                session.FillRectangle(i, step, pixelSize, pixelSize, color);
+                            }                            
+                        }                       
                     }
 
-                    if (min.HasValue && max.HasValue)
-                    {
-                        session.DrawLine(
-                            min.Value,
-                            i,
-                            max.Value,
-                            i,
-                            color,
-                            1.0f);
-                    }
+                    step += pixelSize;
                 }
-
-                //draw edges
-                DrawLine(a, b, session, color);
-                DrawLine(b, c, session, color);
-                DrawLine(c, a, session, color);
-
-                //// draw normals
-                //DrawLine(a.Position, a.Position + faceNormal, session, Colors.YellowGreen);
-                //DrawLine(b.Position, b.Position + faceNormal, session, Colors.YellowGreen);
-                //DrawLine(c.Position, c.Position + faceNormal, session, Colors.YellowGreen);
             }
         }
 
@@ -230,7 +203,71 @@ namespace Draw3D
                 color, 1.0f);
         }
 
-        private float? XOL(Vector4F a, Vector4F b, float y)
+        private void DrawLineEx(Vector4F a, Vector4F b, CanvasDrawingSession session, Color color) => session.DrawLine(a.X, a.Y,b.X, b.Y, color, 1.0f);
+
+        private (float?,float?) XOL(Vector4F a, Vector4F b, float y)
+        {
+            var pointA = GetXByY(a, b, y);
+            var pointB = GetXByY(a, b, y+1);
+
+            return (pointA, pointB);
+        }
+
+        private void AddVertexByY(Vector4F a, Vector4F b, float y, List<Vector4F> list)
+        {
+
+            var pointA = GetInterpolatedByY(a, b, y, y + 0.5f);
+            if(pointA != null)
+            {
+                list.Add(pointA);
+            }
+        }
+
+        private Vector4F GetInterpolatedByY(Vector4F a, Vector4F b, float pos, float y)
+        {
+            if (y > MathF.Max(a.Y, b.Y) || y < MathF.Min(a.Y, b.Y))
+                return null;
+
+            var dy = MathF.Abs(a.Y - y);
+            var len = MathF.Abs(a.Y - b.Y);
+
+            if (len == 0)
+            {
+                return null;
+            }
+
+            var k = dy / len;
+
+            var dx = MathF.Abs(a.X - b.X) * k;
+            var dz = MathF.Abs(a.Z - b.Z) * k;
+
+            var x = a.X > b.X ? a.X - dx : a.X + dx;
+            var z = a.Z > b.Z ? a.Z - dz : a.Z + dz;
+
+            return new Vector4F(x, pos, z, 1);
+        }
+
+        private Vector4F GetInterpolatedByXY(Vector4F a, Vector4F b, float x, float y)
+        {
+            if (x > MathF.Max(a.X, b.X) || x < MathF.Min(a.X, b.X))
+                return null;
+
+            var dx = MathF.Abs(a.X - x);
+            var len = MathF.Abs(a.X - b.X);
+
+            if (len == 0)
+            {
+                return null;
+            }
+
+            var k = dx / len;
+            var dz = MathF.Abs(a.Z - b.Z) * k;
+            var z = a.Z > b.Z ? a.Z - dz : a.Z + dz;
+
+            return new Vector4F(x, y, z, 1);
+        }
+
+        private float? GetXByY(Vector4F a, Vector4F b, float y)
         {
             if (y > MathF.Max(a.Y, b.Y) || y < MathF.Min(a.Y, b.Y))
                 return null;
@@ -246,7 +283,7 @@ namespace Draw3D
             var k = dy / len;
             var dx = MathF.Abs(a.X - b.X) * k;
 
-            if(a.X > b.X)
+            if (a.X > b.X)
             {
                 return a.X - dx;
             }
@@ -266,8 +303,8 @@ namespace Draw3D
 
         private (float, float) Area(Vector4F a, Vector4F b, Vector4F c)
         {
-            var minY = MathF.Min(MathF.Min(a.Y, b.Y), c.Y);
-            var maxY = MathF.Max(MathF.Max(a.Y, b.Y), c.Y);
+            var minY = MathF.Floor(MathF.Min(MathF.Min(a.Y, b.Y), c.Y));
+            var maxY = MathF.Floor(MathF.Max(MathF.Max(a.Y, b.Y), c.Y));
 
             return (minY, maxY);
         }
@@ -279,20 +316,7 @@ namespace Draw3D
             worldToScreenMatrix = Matrix4x4F.WorldToScreen(Canvas3D.Size);
 
             mvp = Matrix4x4F.Multiply(Matrix4x4F.Multiply(viewMatrix, perspectiveMatrix), worldToScreenMatrix);
+            Matrix4x4F.Invert(mvp, out mvpInverted);
         }
-
-        private Matrix4x4F Invert(Matrix4x4F m)
-        {
-            var nm = new System.Numerics.Matrix4x4(
-                m.A11, m.A12, m.A13, m.A14,
-                m.A21, m.A22, m.A23, m.A24,
-                m.A31, m.A32, m.A33, m.A34,
-                m.A41, m.A42, m.A43, m.A44
-            );
-
-            System.Numerics.Matrix4x4.Invert(nm, out var inv);
-
-            return new Matrix4x4F(inv);
-        } 
     }
 }
